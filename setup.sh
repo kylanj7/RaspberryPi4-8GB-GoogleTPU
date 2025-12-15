@@ -1,6 +1,6 @@
 #!/bin/bash
 # Coral TPU Setup Script for Raspberry Pi
-# Tested on Raspberry Pi 4 with Debian Trixie
+# Tested on Raspberry Pi 4 with Debian Trixie 13.2
 
 set -e  # Exit on any error
 
