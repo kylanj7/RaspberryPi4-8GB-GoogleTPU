@@ -158,15 +158,15 @@ pip freeze > requirements.txt
 
 # Test installation
 echo ""
-echo "=========================================="
+echo "# ----------------------------------------"
 echo "Testing installation..."
-echo "=========================================="
+echo "# ----------------------------------------"
 python test_coral.py
 
 echo ""
-echo "=========================================="
+echo "# ----------------------------------------"
 echo "Installation complete!"
-echo "=========================================="
+echo "# ----------------------------------------"
 echo ""
 echo "To activate the environment in future sessions:"
 echo "  cd $PROJECT_DIR"
