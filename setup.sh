@@ -4,9 +4,9 @@
 
 set -e  # Exit on any error
 
-echo "=========================================="
+echo "# ----------------------------------------"
 echo "Coral TPU Installation Script"
-echo "=========================================="
+echo "# ----------------------------------------"
 
 # Update system
 echo "Updating system packages..."
