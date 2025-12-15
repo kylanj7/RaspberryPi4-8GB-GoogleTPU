@@ -4,13 +4,14 @@
 
 set -e  # Exit on any error
 
-echo "# ----------------------------------------"
+echo "=========================================="
 echo "Coral TPU Installation Script"
-echo "# ----------------------------------------"
+echo "=========================================="
 
 # Update system
 echo "Updating system packages..."
 sudo apt-get update
+sudo apt-get upgrade -y
 
 # Install system dependencies
 echo "Installing system dependencies..."
@@ -66,12 +67,15 @@ sudo apt-get update
 sudo apt-get install -y libedgetpu1-std
 
 # Create project directory
-PROJECT_DIR="$HOME/Desktop/GoogleTPU"
+PROJECT_DIR="$HOME/RaspberryPi4-8GB-GoogleTPU"
 mkdir -p "$PROJECT_DIR"
 cd "$PROJECT_DIR"
 
 # Set Python 3.9 for this project
 pyenv local 3.9.19
+
+# Remove old venv if exists
+rm -rf coral_env
 
 # Create virtual environment
 echo "Creating virtual environment..."
@@ -84,16 +88,29 @@ source coral_env/bin/activate
 echo "Installing Python packages..."
 pip install --upgrade pip
 
-# Install packages in correct order
-pip install "numpy<2"  # Must be <2 for pycoral compatibility
+# CRITICAL: Install numpy and opencv together with correct versions
+# This prevents opencv from upgrading numpy to 2.x
+echo "Installing numpy and opencv with pinned versions..."
+pip install "numpy<2" "opencv-python<4.10"
+
+# Install other core packages
 pip install pillow
-pip install opencv-python
 
 # Install TFLite runtime
+echo "Installing TFLite runtime..."
 pip install --extra-index-url https://google-coral.github.io/py-repo/ tflite-runtime
 
 # Install PyCoral
+echo "Installing PyCoral..."
 pip install --extra-index-url https://google-coral.github.io/py-repo/ pycoral
+
+# Verify numpy version is still <2
+NUMPY_VERSION=$(python -c "import numpy; print(numpy.__version__)")
+echo "NumPy version: $NUMPY_VERSION"
+if [[ "$NUMPY_VERSION" == 2.* ]]; then
+    echo "ERROR: NumPy was upgraded to 2.x. Fixing..."
+    pip install --force-reinstall "numpy<2"
+fi
 
 # Create test script
 cat > test_coral.py << 'EOF'
@@ -158,15 +175,15 @@ pip freeze > requirements.txt
 
 # Test installation
 echo ""
-echo "# ----------------------------------------"
+echo "=========================================="
 echo "Testing installation..."
-echo "# ----------------------------------------"
+echo "=========================================="
 python test_coral.py
 
 echo ""
-echo "# ----------------------------------------"
+echo "=========================================="
 echo "Installation complete!"
-echo "# ----------------------------------------"
+echo "=========================================="
 echo ""
 echo "To activate the environment in future sessions:"
 echo "  cd $PROJECT_DIR"
