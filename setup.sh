@@ -3,103 +3,86 @@
 # Coral TPU Setup Script for Raspberry Pi 4 8GB
 # Tested on Debian Trixie 13.2
 
-set -e  # Exit on any error
+set -e  # Exit on error
 
 echo "=========================================="
-echo "Coral TPU Installation Script"
+echo "Coral TPU Installation Script (Fixed)"
 echo "=========================================="
 
-# Update system
-echo "Updating system packages..."
-sudo apt-get update
+PROJECT_DIR="$HOME/Coral_TPU"
+cd "$PROJECT_DIR"
 
-# Install pyenv if not already installed
-if [ ! -d "$HOME/.pyenv" ]; then
-    echo "Installing pyenv..."
-    curl https://pyenv.run | bash
-    
-    # Add pyenv to bashrc if not already there
-    if ! grep -q "pyenv init" ~/.bashrc; then
-        echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bashrc
-        echo 'command -v pyenv >/dev/null || export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bashrc
-        echo 'eval "$(pyenv init -)"' >> ~/.bashrc
-    fi
-    
-    # Load pyenv for current session
-    export PYENV_ROOT="$HOME/.pyenv"
-    export PATH="$PYENV_ROOT/bin:$PATH"
+# 1. Install Python build dependencies FIRST
+echo "Installing Python build dependencies..."
+sudo apt-get install -y \
+    build-essential \
+    libssl-dev \
+    zlib1g-dev \
+    libbz2-dev \
+    libreadline-dev \
+    libsqlite3-dev \
+    curl \
+    libncursesw5-dev \
+    xz-utils \
+    tk-dev \
+    libxml2-dev \
+    libxmlsec1-dev \
+    libffi-dev \
+    liblzma-dev
+
+# 2. Install libedgetpu (correct package name)
+echo "Installing libedgetpu1-std..."
+sudo apt-get install -y libedgetpu1-std
+
+# 3. Setup pyenv if needed
+export PYENV_ROOT="$HOME/.pyenv"
+export PATH="$PYENV_ROOT/bin:$PATH"
+if command -v pyenv >/dev/null 2>&1; then
     eval "$(pyenv init -)"
 fi
 
-# Install Python 3.9 via pyenv
+# 4. Install Python 3.9.19
 echo "Installing Python 3.9.19..."
-pyenv install -s 3.9.19  # -s skips if already installed
+pyenv install -s 3.9.19
 
-# Create project directory
-PROJECT_DIR="$HOME/RPi4-8GB-CoralTPU"
-mkdir -p "$PROJECT_DIR"
-cd "$PROJECT_DIR"
-
-# Set Python 3.9 for this project
+# 5. Set local Python version
 pyenv local 3.9.19
 
-# Create New Virtual Environment
+# 6. Create virtual environment with pyenv Python
 echo "Creating virtual environment..."
-python -m venv coral_env
+~/.pyenv/versions/3.9.19/bin/python -m venv coral_env
 
-# Activate virtual environment
-echo "Activaing the New Python Virtual Environment..." 
+# 7. Activate and install packages
 source coral_env/bin/activate
 
-# Upgrade pip
-echo "Installing Python packages..."
 pip install --upgrade pip
 
-# CRITICAL: Install numpy and opencv together with correct versions
-# This prevents opencv from upgrading numpy to 2.x
-echo "Installing numpy and opencv with pinned versions..."
-pip install "numpy<2" "opencv-python<4.10"
+# Install in correct order
+pip install "numpy<2" "opencv-python<4.10" pillow
 
-# Install the Edge TPU MAX Runtime
-echo "Installing EdgeTPU MAX Runtime..."
-sudo apt-get install -y libedgetpu1-max
+# Install Coral packages
+pip install --extra-index-url https://google-coral.github.io/py-repo/ \
+    tflite-runtime pycoral
 
-# Add udev rules for TPU access
-echo 'SUBSYSTEM=="usb",ATTRS{idVendor}=="1a6e",GROUP="plugdev"' | sudo tee /etc/udev/rules.d/99-edgetpu-accelerator.rules
-echo 'SUBSYSTEM=="usb",ATTRS{idVendor}=="18d1",GROUP="plugdev"' | sudo tee -a /etc/udev/rules.d/99-edgetpu-accelerator.rules
-
-# Reload udev rules
+# 8. Setup udev rules
+echo "Setting up TPU permissions..."
+echo 'SUBSYSTEM=="usb",ATTRS{idVendor}=="1a6e",GROUP="plugdev"' | \
+    sudo tee /etc/udev/rules.d/99-edgetpu-accelerator.rules
 sudo udevadm control --reload-rules
 sudo udevadm trigger
-
-# Add your user to plugdev group
 sudo usermod -a -G plugdev $USER
 
-echo "Installing PyCoral..."
-sudo apt-get install python3-pycoral
+# 9. Verify installation
+echo "=========================================="
+python -c "import numpy; print(f'NumPy: {numpy.__version__}')"
+python -c "import cv2; print(f'OpenCV: {cv2.__version__}')"
+python -c "import tflite_runtime; print('TFLite: OK')"
+python -c "from pycoral.utils import edgetpu; print('PyCoral: OK')"
 
-# CRITICAL: Install numpy and opencv together with correct versions
-echo "Installing numpy and opencv with pinned versions..."
-pip install "numpy<2" "opencv-python<4.10"
-
-# Install other core packages
-pip install pillow
-
-# Install TFLite runtime
-echo "Installing TFLite runtime..."
-pip install --extra-index-url https://google-coral.github.io/py-repo/ tflite-runtime
-
-# Install PyCoral
-echo "Installing PyCoral..."
-pip install --extra-index-url https://google-coral.github.io/py-repo/ pycoral
-
-# Numpy Version Error Handling
-NUMPY_VERSION=$(python -c "import numpy; print(numpy.__version__)")
-echo "NumPy version: $NUMPY_VERSION"
-if [[ "$NUMPY_VERSION" == 2.* ]]; then
-    echo "ERROR: NumPy was upgraded to 2.x. Fixing..."
-    pip install --force-reinstall "numpy<2"
-fi
+echo "=========================================="
+echo "Installation complete!"
+echo "You must LOG OUT and LOG BACK IN for TPU permissions."
+echo "=========================================="
 
 # Download sample models and test data
 echo "Downloading sample models..."
