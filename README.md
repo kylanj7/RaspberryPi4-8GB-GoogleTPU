@@ -4,3 +4,8 @@ OS version:
 
 **kylan@raspberrypi:~ $** cat /etc/os-release
 +PRETTY_NAME="Debian GNU/Linux 13.2 (trixie)"
+
+## Sources:
+
++https://www.coral.ai/docs/accelerator/get-started/#requirements
++https://github.com/google-coral/pycoral
