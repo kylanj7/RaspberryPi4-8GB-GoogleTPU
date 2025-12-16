@@ -8,4 +8,5 @@ OS version:
 ## Sources:
 
 +https://www.coral.ai/docs/accelerator/get-started/#requirements
+
 +https://github.com/google-coral/pycoral
